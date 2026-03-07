@@ -34,7 +34,13 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
+      const response = await fetch('/api/auth/session');
+      const sessionData = await response.json();
+      if (sessionData?.user?.onboarded) {
+        router.push('/dashboard');
+      } else {
+        router.push('/onboarding');
+      }
     } catch (err) {
       setError('Something went wrong. Please try again.');
     } finally {
