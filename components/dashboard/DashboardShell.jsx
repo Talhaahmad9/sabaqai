@@ -1,19 +1,13 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import Sidebar, { MobileTopBar } from '@/components/dashboard/Sidebar';
-import StatCards from '@/components/dashboard/StatCards';
-import RecentSessions from '@/components/dashboard/RecentSessions';
-import WeakTopics from '@/components/dashboard/WeakTopics';
-import UploadedMaterials from '@/components/dashboard/UploadedMaterials';
-import SectionHeader from '@/components/ui/SectionHeader';
-
-const HARDCODED_SUBJECTS = [
-  { _id: '1', name: 'Control Systems' },
-  { _id: '2', name: 'DSP' },
-  { _id: '3', name: 'Physics' },
-];
+import { useState } from "react";
+import { motion } from "framer-motion";
+import Sidebar, { MobileTopBar } from "@/components/dashboard/Sidebar";
+import StatCards from "@/components/dashboard/StatCards";
+import RecentSessions from "@/components/dashboard/RecentSessions";
+import WeakTopics from "@/components/dashboard/WeakTopics";
+import UploadedMaterials from "@/components/dashboard/UploadedMaterials";
+import SectionHeader from "@/components/ui/SectionHeader";
 
 const staggerContainer = {
   hidden: {},
@@ -22,18 +16,28 @@ const staggerContainer = {
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
 };
 
-export default function DashboardShell({ greeting, userName, userInitial, stats, sessions, weakTopics, materials }) {
+export default function DashboardShell({
+  greeting,
+  userName,
+  userInitial,
+  stats,
+  sessions,
+  weakTopics,
+  materials,
+  subjects,
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSubject, setActiveSubject] = useState(null);
 
+  const sidebarSubjects = (subjects ?? []).map((s, i) => ({ _id: i, name: s }));
+
   return (
     <div className="flex h-screen bg-slate-900 overflow-hidden">
-      {/* Sidebar */}
       <Sidebar
-        subjects={HARDCODED_SUBJECTS}
+        subjects={sidebarSubjects}
         activeSubject={activeSubject}
         onSubjectSelect={setActiveSubject}
         onNewSubject={() => {}}
@@ -41,31 +45,28 @@ export default function DashboardShell({ greeting, userName, userInitial, stats,
         onMobileClose={() => setMobileOpen(false)}
       />
 
-      {/* Right column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
-        {/* Mobile top bar */}
         <MobileTopBar
           onMobileOpen={() => setMobileOpen(true)}
           userInitial={userInitial}
         />
 
-        {/* Main content */}
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
           <div className="max-w-5xl mx-auto space-y-8">
-
-            {/* Greeting */}
             <motion.h1
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
               className="text-2xl md:text-3xl font-bold text-white"
             >
-              {greeting},{' '}
-              <span className="text-violet-400">{userName}</span> 👋
+              {greeting}, <span className="text-violet-400">{userName}</span>
             </motion.h1>
 
-            {/* Stat cards with stagger */}
-            <motion.div variants={staggerContainer} initial="hidden" animate="show">
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+            >
               <motion.div variants={fadeUp}>
                 <StatCards
                   hoursStudied={stats.hoursStudied}
@@ -76,8 +77,12 @@ export default function DashboardShell({ greeting, userName, userInitial, stats,
               </motion.div>
             </motion.div>
 
-            {/* Recent Sessions */}
-            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-4">
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+              className="space-y-4"
+            >
               <motion.div variants={fadeUp}>
                 <SectionHeader title="Recent Sessions" />
               </motion.div>
@@ -86,8 +91,12 @@ export default function DashboardShell({ greeting, userName, userInitial, stats,
               </motion.div>
             </motion.div>
 
-            {/* Weak Topics */}
-            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-4">
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+              className="space-y-4"
+            >
               <motion.div variants={fadeUp}>
                 <SectionHeader title="Weak Topics" />
               </motion.div>
@@ -96,8 +105,12 @@ export default function DashboardShell({ greeting, userName, userInitial, stats,
               </motion.div>
             </motion.div>
 
-            {/* Uploaded Materials */}
-            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-4">
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+              className="space-y-4"
+            >
               <motion.div variants={fadeUp}>
                 <SectionHeader title="Uploaded Materials" />
               </motion.div>
@@ -105,7 +118,6 @@ export default function DashboardShell({ greeting, userName, userInitial, stats,
                 <UploadedMaterials materials={materials} />
               </motion.div>
             </motion.div>
-
           </div>
         </main>
       </div>
