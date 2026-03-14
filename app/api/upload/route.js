@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import User from "@/lib/models/User";
 import Material from "@/lib/models/Material";
-import { uploadFileToS3 } from "@/lib/s3";
 import {
   BedrockAgentClient,
   StartIngestionJobCommand,
@@ -17,45 +16,17 @@ export async function POST(request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await request.formData();
-    const file = formData.get("file");
+    const { fileName, fileSize, fileType, s3Key, subject } =
+      await request.json();
 
-    if (!file) {
+    if (!fileName || !s3Key) {
       return NextResponse.json(
-        { message: "No file provided" },
+        { message: "fileName and s3Key are required" },
         { status: 400 },
       );
     }
 
-    const contentType = file.type || "";
-    const fileSize = file.size || 0;
-
-    const allowedTypes = [
-      "application/pdf",
-      "application/vnd.ms-powerpoint",
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ];
-
-    if (!allowedTypes.includes(contentType)) {
-      return NextResponse.json(
-        { message: "Only PDF and PowerPoint files are allowed" },
-        { status: 400 },
-      );
-    }
-
-    const MAX_BYTES = 10 * 1024 * 1024;
-    if (fileSize > MAX_BYTES) {
-      return NextResponse.json(
-        { message: "File is too large (max 10MB)" },
-        { status: 400 },
-      );
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const s3Key = await uploadFileToS3(buffer, file.name, contentType);
-
+    // Trigger Bedrock KB sync
     try {
       const {
         AWS_REGION,
@@ -78,14 +49,13 @@ export async function POST(request) {
             secretAccessKey: AWS_SECRET_ACCESS_KEY,
           },
         });
-
-        const cmd = new StartIngestionJobCommand({
-          knowledgeBaseId: BEDROCK_KB_ID,
-          dataSourceId: BEDROCK_DS_ID,
-          clientToken: `${Date.now()}-${Math.random().toString(36).slice(2, 14)}-${Math.random().toString(36).slice(2, 14)}`,
-        });
-
-        await client.send(cmd);
+        await client.send(
+          new StartIngestionJobCommand({
+            knowledgeBaseId: BEDROCK_KB_ID,
+            dataSourceId: BEDROCK_DS_ID,
+            clientToken: `${Date.now()}-${Math.random().toString(36).slice(2, 14)}-${Math.random().toString(36).slice(2, 14)}`,
+          }),
+        );
       }
     } catch (err) {
       console.error("Bedrock ingestion error:", err);
@@ -97,14 +67,12 @@ export async function POST(request) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    const subject = formData.get("subject") || "General";
-
     const saved = await Material.create({
       userId: user._id,
-      fileName: file.name,
+      fileName,
       fileSize,
       s3Key,
-      subject,
+      subject: subject || "General",
     });
 
     return NextResponse.json(

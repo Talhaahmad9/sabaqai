@@ -58,27 +58,54 @@ export default function UploadModal({ onClose, onSuccess }) {
       return;
     }
 
-    const MAX_BYTES = 10 * 1024 * 1024;
-    if (file.size > MAX_BYTES) {
-      setError("File is too large (max 10MB).");
-      return;
-    }
-
     setUploading(true);
 
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("subject", subject || "General");
-
-      const res = await fetch("/api/upload", {
+      // Step 1 — get presigned URL
+      const presignRes = await fetch("/api/upload/presign", {
         method: "POST",
-        body: fd,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          subject: subject || "General",
+        }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || "Upload failed.");
+      const { url, key } = await presignRes.json();
+      if (!presignRes.ok || !url) {
+        setError("Failed to get upload URL.");
+        return;
+      }
+
+      // Step 2 — upload directly to S3
+      const s3Res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      if (!s3Res.ok) {
+        setError("Upload to S3 failed.");
+        return;
+      }
+
+      // Step 3 — save metadata to DB and trigger KB sync
+      const metaRes = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          s3Key: key,
+          subject: subject || "General",
+        }),
+      });
+
+      const metaData = await metaRes.json();
+      if (!metaRes.ok) {
+        setError(metaData.message || "Failed to save file metadata.");
         return;
       }
 
