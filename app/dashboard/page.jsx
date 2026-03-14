@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import User from "@/lib/models/User";
 import Session from "@/lib/models/Session";
+import Material from "@/lib/models/Material";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 
 function getGreeting() {
@@ -44,6 +45,11 @@ export default async function DashboardPage() {
     .limit(5)
     .lean();
 
+  const materials = await Material.find({ userId: user._id })
+    .sort({ uploadedAt: -1 })
+    .limit(10)
+    .lean();
+
   const stats = {
     hoursStudied: 0,
     sessionsDone,
@@ -62,7 +68,7 @@ export default async function DashboardPage() {
       stats={stats}
       sessions={JSON.parse(JSON.stringify(recentSessions))}
       weakTopics={user.weakTopics ?? []}
-      materials={[]}
+      materials={JSON.parse(JSON.stringify(materials))}
       subjects={user.subjects ?? []}
     />
   );
