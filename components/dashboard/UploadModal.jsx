@@ -60,15 +60,19 @@ export default function UploadModal({ onClose, onSuccess }) {
 
     setUploading(true);
 
+    const isPpt = [
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ].includes(file.type);
+
     try {
-      // Step 1 — get presigned URL
+      // Step 1 — Get presigned URL (works for both PDF and PPT)
       const presignRes = await fetch("/api/upload/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fileName: file.name,
           fileType: file.type,
-          subject: subject || "General",
         }),
       });
 
@@ -78,7 +82,7 @@ export default function UploadModal({ onClose, onSuccess }) {
         return;
       }
 
-      // Step 2 — upload directly to S3
+      // Step 2 — Upload directly to S3
       const s3Res = await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": file.type },
@@ -90,23 +94,42 @@ export default function UploadModal({ onClose, onSuccess }) {
         return;
       }
 
-      // Step 3 — save metadata to DB and trigger KB sync
-      const metaRes = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
-          s3Key: key,
-          subject: subject || "General",
-        }),
-      });
+      if (isPpt) {
+        // Step 3a — PPT: trigger server-side conversion
+        const convertRes = await fetch("/api/convert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            s3Key: key,
+            fileName: file.name,
+            subject: subject || "General",
+          }),
+        });
 
-      const metaData = await metaRes.json();
-      if (!metaRes.ok) {
-        setError(metaData.message || "Failed to save file metadata.");
-        return;
+        const convertData = await convertRes.json();
+        if (!convertRes.ok) {
+          setError(convertData.message || "Conversion failed.");
+          return;
+        }
+      } else {
+        // Step 3b — PDF: just save metadata
+        const metaRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+            s3Key: key,
+            subject: subject || "General",
+          }),
+        });
+
+        const metaData = await metaRes.json();
+        if (!metaRes.ok) {
+          setError(metaData.message || "Failed to save metadata.");
+          return;
+        }
       }
 
       onSuccess?.();

@@ -51,7 +51,7 @@ export default async function DashboardPage() {
     .lean();
 
   const stats = {
-    hoursStudied: 0,
+    hoursStudied: parseFloat(((sessionsDone * 10) / 60).toFixed(1)),
     sessionsDone,
     topicsCovered: user.studiedTopics?.length ?? 0,
     weakTopicsCount: user.weakTopics?.length ?? 0,
